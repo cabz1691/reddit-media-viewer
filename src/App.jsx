@@ -189,7 +189,11 @@ for (const subreddit of subredditNames) {
           type = "image";
         }
 
-        if (post.url.match(/\.(mp4|webm)$/i) && showVideos) {
+        if (
+          post.url.match(/\.(mp4|webm)$/i) &&
+          showVideos &&
+          (post.url.includes('v.redd.it') || post.url.includes('i.imgur.com') || post.url.includes('giant.gfycat.com'))
+        ) {
           mediaUrl = post.url;
           type = "video";
         }
