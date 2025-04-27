@@ -62,13 +62,16 @@ const fetchRedditVideo = async (videoUrl) => {
 };
 
   // --- Proxy URL wrapper ---
-const getProxiedUrl = (url) => {
-  if (!url) return ''; // safety check
-  if (url.includes('v.redd.it') || url.includes('redgifs.com')) {
-    return `/api/proxy?url=${encodeURIComponent(url)}`;
-  }
-  return url; // normal images/gifs don't need proxy
-};
+  const getProxiedUrl = (url) => {
+    if (!url) return '';
+    if (url.includes('redgifs.com')) {
+      return `https://corsproxy.io/?${encodeURIComponent(url)}`;
+    }
+    if (url.includes('v.redd.it')) {
+      return `/api/proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  };
 
 const validateSubreddit = async (index) => {
   const name = subreddits[index]?.name;
