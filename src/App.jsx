@@ -80,21 +80,31 @@ const getProxiedUrl = (url) => {
   return url; // normal images/gifs don't need proxy
 };
 
-  const validateSubreddit = async (index) => {
-    const name = subreddits[index]?.name; 
-    if (!name) return;
-    try {
-      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100`));
-      const data = await res.json();
+const validateSubreddit = async (index) => {
+  const name = subreddits[index]?.name;
+  if (!name) return;
+
+  try {
+    const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${name}/new.json?limit=100`));
+    const data = await res.json();
+
+    if (data?.data?.children?.length > 0) {
       const updated = [...subreddits];
-      updated[index].valid = data?.data?.display_name ? true : false;
+      updated[index].valid = true;
       setSubreddits(updated);
-    } catch {
+    } else {
       const updated = [...subreddits];
       updated[index].valid = false;
       setSubreddits(updated);
     }
-  };
+  } catch (err) {
+    console.error('Subreddit validation error:', err);
+    const updated = [...subreddits];
+    updated[index].valid = false;
+    setSubreddits(updated);
+  }
+};
+
 
   const fetchMedia = async () => {
     setMediaItems([]);
