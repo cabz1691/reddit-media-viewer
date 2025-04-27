@@ -149,56 +149,63 @@ const App = () => {
     const subredditNames = subredditList.filter(s => s.valid).map(s => s.name);
     const media = [];
     const redgifsToken = await getRedgifsToken();
-
-for (const subreddit of subredditNames) {
+  
+    for (const subreddit of subredditNames) {
       let allPosts = [];
       let after = null;
-
+  
       for (let i = 0; i < 5; i++) {
         const url = `https://www.reddit.com/r/${subreddit}/new.json?limit=100${after ? `&after=${after}` : ''}`;
         const res = await fetch(url);
         const data = await res.json();
-
+  
         const posts = data.data.children.map(child => child.data);
         allPosts.push(...posts);
         after = data.data.after;
         if (!after) break;
       }
-
+  
       for (const post of allPosts) {
         let mediaUrl = null;
         let type = null;
-
-        if (post.post_hint === "image" && showImages && post.url) {
-          mediaUrl = post.url;
-          type = "image";
-        }
-
-        if (!mediaUrl && showImages && post.preview?.images?.[0]?.source?.url) {
-          mediaUrl = post.preview.images[0].source.url.replace(/&amp;/g, "&");
-          type = "image";
-        }
-
+  
+        // 👉 1. Prefer Reddit hosted videos (v.redd.it) first
         if (post.is_video && showVideos && post.media?.reddit_video?.fallback_url) {
           mediaUrl = post.media.reddit_video.fallback_url;
           type = "video";
         }
-
-        if (post.url.match(/\.gif$/i) && showGIFs) {
+  
+        // 👉 2. Handle normal images
+        if (!mediaUrl && post.post_hint === "image" && showImages && post.url) {
           mediaUrl = post.url;
           type = "image";
         }
-
+  
+        // 👉 3. Handle preview images
+        if (!mediaUrl && showImages && post.preview?.images?.[0]?.source?.url) {
+          mediaUrl = post.preview.images[0].source.url.replace(/&amp;/g, "&");
+          type = "image";
+        }
+  
+        // 👉 4. Handle direct GIF files
+        if (!mediaUrl && post.url.match(/\.gif$/i) && showGIFs) {
+          mediaUrl = post.url;
+          type = "image";
+        }
+  
+        // 👉 5. Handle direct video files (but only from known good hosts)
         if (
+          !mediaUrl &&
           post.url.match(/\.(mp4|webm)$/i) &&
           showVideos &&
-          (post.url.includes('v.redd.it') || post.url.includes('i.imgur.com') || post.url.includes('giant.gfycat.com'))
+          (post.url.includes('i.imgur.com') || post.url.includes('giant.gfycat.com'))
         ) {
           mediaUrl = post.url;
           type = "video";
         }
-
-        if (post.url.includes("imgur.com") && showImages) {
+  
+        // 👉 6. Handle imgur posts
+        if (!mediaUrl && post.url.includes("imgur.com") && showImages) {
           const imgurId = post.url.split("/").pop().split(".")[0];
           if (post.url.includes(".gifv") || post.url.includes(".mp4")) {
             mediaUrl = `https://i.imgur.com/${imgurId}.mp4`;
@@ -208,14 +215,9 @@ for (const subreddit of subredditNames) {
             type = "image";
           }
         }
-
-        if (post.url.includes("gfycat.com") && showVideos) {
-          const gfyId = post.url.split("/").pop();
-          mediaUrl = `https://giant.gfycat.com/${gfyId}.mp4`;
-          type = "video";
-        }
-
-        if (post.url.includes("redgifs.com") && showVideos && redgifsToken) {
+  
+        // 👉 7. Handle Redgifs links
+        if (!mediaUrl && post.url.includes("redgifs.com") && showVideos && redgifsToken) {
           const redgifsId = post.url.split("/").pop();
           const redgifsVideoUrl = await fetchRedgifsVideo(redgifsId, redgifsToken);
           if (redgifsVideoUrl) {
@@ -223,8 +225,10 @@ for (const subreddit of subredditNames) {
             type = "video";
           }
         }
-
+  
+        // 👉 8. Handle gallery posts
         if (
+          !mediaUrl &&
           showImages &&
           post.is_gallery &&
           post.media_metadata &&
@@ -238,23 +242,25 @@ for (const subreddit of subredditNames) {
             }
           }
         }
-
+  
         if (mediaUrl) {
           media.push({ url: mediaUrl, type });
         }
       }
     }
-
+  
+    // 👉 Shuffle media randomly
     for (let i = media.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [media[i], media[j]] = [media[j], media[i]];
     }
-
+  
     setMediaItems(media);
-  setCurrentIndex(0);
-  setViewMode('player');
-  setIsLoading(false); // 👈 Hide loading screen
-};
+    setCurrentIndex(0);
+    setViewMode('player');
+    setIsLoading(false); // 👈 Hide loading screen
+  };
+  
 
   const currentMedia = mediaItems[currentIndex];
 
