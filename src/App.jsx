@@ -64,10 +64,7 @@ const fetchRedditVideo = async (videoUrl) => {
   // --- Proxy URL wrapper ---
   const getProxiedUrl = (url) => {
     if (!url) return '';
-    if (url.includes('redgifs.com')) {
-      return `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    }
-    if (url.includes('v.redd.it')) {
+    if (url.includes('v.redd.it') || url.includes('redgifs.com')) {
       return `/api/proxy?url=${encodeURIComponent(url)}`;
     }
     return url;
@@ -163,6 +160,8 @@ const validateSubreddit = async (index) => {
       const j = Math.floor(Math.random() * (i + 1));
       [media[i], media[j]] = [media[j], media[i]];
     }
+    console.log('Media items found:', media.length);
+
 
     setMediaItems(media);
     setCurrentIndex(0);
