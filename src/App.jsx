@@ -17,17 +17,12 @@ const App = () => {
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
-  // --- Example Redgifs token fetch ---
-  async function getRedgifsToken() {
-    try {
-      const res = await fetch('https://api.redgifs.com/v2/auth/temporary');
-      const data = await res.json();
-      return data?.token;
-    } catch (err) {
-      console.error('Failed to fetch Redgifs token:', err);
-      return null;
-    }
-  }
+ // --- Redgifs Token Fetch ---
+async function fetchRedgifsToken() {
+  const res = await fetch('https://api.redgifs.com/v2/auth/temporary');
+  const data = await res.json();
+  return data?.token;
+}
 
 const fetchRedgifsVideo = async (id, token) => {
   try {
