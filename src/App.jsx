@@ -418,17 +418,19 @@ for (const subreddit of subredditNames) {
               />
             ) : (
               <video
-                src={currentMedia.url}
-                autoPlay
-                muted={isMuted}
-                loop
-                controls
-                onError={() => {
-                  console.warn("Video failed to load, skipping...");
-                  setCurrentIndex(prev => (prev + 1) % mediaItems.length);
-                }}
-                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-              />
+  src={currentMedia.url}
+  autoPlay
+  muted={isMuted}
+  controls
+  onEnded={() => {
+    setCurrentIndex(prev => (prev + 1) % mediaItems.length);
+  }}
+  onError={() => {
+    console.warn("Video failed to load, skipping...");
+    setCurrentIndex(prev => (prev + 1) % mediaItems.length);
+  }}
+  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+/>
             )}
           </div>
   
