@@ -1,31 +1,21 @@
+// FINAL FULL POWER APP.JSX
+
 import React, { useState, useEffect, useRef } from 'react';
 
 const App = () => {
-  const [subreddits, setSubreddits] = useState([{ name: '', valid: null }]);
+  const [subreddits, setSubreddits] = useState([]);
+  const [newSubreddit, setNewSubreddit] = useState('');
+  const [timerDelay, setTimerDelay] = useState(8);
+  const [startMuted, setStartMuted] = useState(true);
+  const [showImages, setShowImages] = useState(true);
+  const [showVideos, setShowVideos] = useState(true);
+  const [showGIFs, setShowGIFs] = useState(true);
+  const [viewMode, setViewMode] = useState('setup');
   const [mediaItems, setMediaItems] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [viewMode, setViewMode] = useState('setup');
   const [isMuted, setIsMuted] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
-  const [timerDelay, setTimerDelay] = useState(8000);
-  const [isLoading, setIsLoading] = useState(false);
   const timerRef = useRef(null);
-
-  const validateSubreddit = async (index) => {
-    const name = subreddits[index].name;
-    try {
-      const res = await fetch(`https://www.reddit.com/r/${name}/about.json`);
-      const data = await res.json();
-      const isValid = data?.data?.display_name ? true : false;
-      const newList = [...subreddits];
-      newList[index].valid = isValid;
-      setSubreddits(newList);
-    } catch {
-      const newList = [...subreddits];
-      newList[index].valid = false;
-      setSubreddits(newList);
-    }
-  };
 
   const getRedgifsToken = async () => {
     try {
@@ -51,17 +41,32 @@ const App = () => {
     }
   };
 
+  const validateSubreddit = async (index) => {
+    const name = subreddits[index]?.name;
+    if (!name) return;
+    try {
+      const res = await fetch(`https://www.reddit.com/r/${name}/about.json`);
+      const data = await res.json();
+      const updated = [...subreddits];
+      updated[index].valid = data?.data?.display_name ? true : false;
+      setSubreddits(updated);
+    } catch {
+      const updated = [...subreddits];
+      updated[index].valid = false;
+      setSubreddits(updated);
+    }
+  };
+
   const fetchMedia = async () => {
-    setIsLoading(true);
-    const validSubs = subreddits.filter(s => s.valid).map(s => s.name);
+    setMediaItems([]);
+    const token = await getRedgifsToken();
     const media = [];
-    const redgifsToken = await getRedgifsToken();
+    const validSubs = subreddits.filter(sub => sub.valid).map(sub => sub.name);
 
     for (const sub of validSubs) {
       let after = null;
-      for (let i = 0; i < 5; i++) {
-        const url = `https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`;
-        const res = await fetch(url);
+      for (let i = 0; i < 3; i++) {
+        const res = await fetch(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`);
         const data = await res.json();
         const posts = data.data.children.map(child => child.data);
         after = data.data.after;
@@ -71,36 +76,36 @@ const App = () => {
           let mediaUrl = null;
           let type = null;
 
-          if (!mediaUrl && post.url.includes("redgifs.com") && redgifsToken) {
+          if (!mediaUrl && post.url.includes("redgifs.com") && showVideos && token) {
             const id = post.url.split("/").pop();
-            const redgifsUrl = await fetchRedgifsVideo(id, redgifsToken);
-            if (redgifsUrl) {
-              mediaUrl = redgifsUrl;
-              type = "video";
+            const url = await fetchRedgifsVideo(id, token);
+            if (url) {
+              mediaUrl = url;
+              type = 'video';
             }
           }
 
-          if (!mediaUrl && post.is_video && post.media?.reddit_video?.fallback_url) {
-            const fallbackUrl = post.media.reddit_video.fallback_url;
-            if (fallbackUrl.endsWith(".mp4")) {
-              mediaUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(fallbackUrl)}`;
-              type = "video";
+          if (!mediaUrl && post.is_video && showVideos && post.media?.reddit_video?.fallback_url) {
+            const fallback = post.media.reddit_video.fallback_url;
+            if (fallback.endsWith(".mp4")) {
+              mediaUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(fallback)}`;
+              type = 'video';
             }
           }
 
-          if (!mediaUrl && post.url.match(/\.(mp4|webm)$/i) && (post.url.includes('i.imgur.com') || post.url.includes('giant.gfycat.com'))) {
+          if (!mediaUrl && post.post_hint === 'image' && showImages) {
             mediaUrl = post.url;
-            type = "video";
+            type = 'image';
           }
 
-          if (!mediaUrl && post.post_hint === "image") {
+          if (!mediaUrl && showGIFs && post.url.match(/\.gif$/i)) {
             mediaUrl = post.url;
-            type = "image";
+            type = 'image';
           }
 
-          if (!mediaUrl && post.url.match(/\.gif$/i)) {
+          if (!mediaUrl && showVideos && post.url.match(/\.(mp4|webm)$/i)) {
             mediaUrl = post.url;
-            type = "image";
+            type = 'video';
           }
 
           if (mediaUrl) {
@@ -118,102 +123,117 @@ const App = () => {
     setMediaItems(media);
     setCurrentIndex(0);
     setViewMode('player');
-    setIsLoading(false);
+    setIsMuted(startMuted);
   };
 
-  const currentMedia = mediaItems[currentIndex];
+  const addSubreddit = () => {
+    if (newSubreddit.trim()) {
+      setSubreddits([...subreddits, { name: newSubreddit.trim(), valid: null }]);
+      setNewSubreddit('');
+    }
+  };
+
+  const removeSubreddit = (index) => {
+    const updated = [...subreddits];
+    updated.splice(index, 1);
+    setSubreddits(updated);
+  };
 
   const skipMedia = () => setCurrentIndex((prev) => (prev + 1) % mediaItems.length);
 
-  const handleKeyDown = (e) => {
-    if (e.code === 'ArrowRight') {
-      skipMedia();
+  const toggleFullscreen = () => {
+    const elem = document.documentElement;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen();
+    } else {
+      document.exitFullscreen();
     }
   };
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  useEffect(() => {
     if (viewMode === 'player' && mediaItems.length > 0 && !isPaused) {
-      timerRef.current = setInterval(skipMedia, timerDelay);
+      timerRef.current = setInterval(skipMedia, timerDelay * 1000);
     } else {
       clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
   }, [viewMode, mediaItems, isPaused, timerDelay]);
 
+  const currentMedia = mediaItems[currentIndex];
+
   return (
     <div style={{ background: '#121212', color: 'white', minHeight: '100vh', padding: '2rem', textAlign: 'center' }}>
       {viewMode === 'setup' && (
         <div>
           <h1>Reddit Media Viewer</h1>
-          {subreddits.map((sub, index) => (
-            <div key={index} style={{ marginBottom: '1rem' }}>
-              <input
-                value={sub.name}
-                onChange={(e) => {
-                  const newList = [...subreddits];
-                  newList[index].name = e.target.value;
-                  newList[index].valid = null;
-                  setSubreddits(newList);
-                }}
-                placeholder="Enter subreddit"
-                style={{ padding: '0.5rem', marginRight: '0.5rem' }}
-              />
-              <button onClick={() => validateSubreddit(index)}>Check</button>
-              {sub.valid === true && ' ✅'}
-              {sub.valid === false && ' ❌'}
-            </div>
-          ))}
-          <button onClick={() => setSubreddits([...subreddits, { name: '', valid: null }])}>
-            Add Another Subreddit
-          </button>
-          <div style={{ marginTop: '1rem' }}>
-            <label>Timer Delay (ms): </label>
-            <select value={timerDelay} onChange={(e) => setTimerDelay(Number(e.target.value))}>
-              <option value={3000}>3 seconds</option>
-              <option value={5000}>5 seconds</option>
-              <option value={8000}>8 seconds</option>
-              <option value={10000}>10 seconds</option>
-            </select>
+          <div style={{ marginBottom: '1rem' }}>
+            {subreddits.map((sub, index) => (
+              <div key={index} style={{ marginBottom: '0.5rem' }}>
+                <input
+                  value={sub.name}
+                  readOnly
+                  style={{
+                    padding: '0.5rem',
+                    borderRadius: '8px',
+                    border: `2px solid ${sub.valid === true ? 'green' : sub.valid === false ? 'red' : 'gray'}`
+                  }}
+                />
+                <button onClick={() => validateSubreddit(index)} style={{ marginLeft: '0.5rem' }}>Check</button>
+                <button onClick={() => removeSubreddit(index)} style={{ marginLeft: '0.5rem' }}>Remove</button>
+              </div>
+            ))}
           </div>
-          <button onClick={fetchMedia} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>
-            Start Viewer
-          </button>
+          <input
+            value={newSubreddit}
+            onChange={(e) => setNewSubreddit(e.target.value)}
+            placeholder="Add subreddit"
+            style={{ marginBottom: '1rem', padding: '0.5rem' }}
+          />
+          <br />
+          <button onClick={addSubreddit}>Add Subreddit</button>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label>Timer (seconds): </label>
+            <input
+              type="number"
+              value={timerDelay}
+              onChange={(e) => setTimerDelay(Number(e.target.value))}
+              style={{ width: '80px', marginLeft: '0.5rem' }}
+            />
+          </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label>
+              <input type="checkbox" checked={startMuted} onChange={() => setStartMuted(!startMuted)} /> Start Muted
+            </label>
+          </div>
+
+          <div style={{ marginTop: '1rem' }}>
+            <label><input type="checkbox" checked={showImages} onChange={() => setShowImages(!showImages)} /> Images</label>
+            <label style={{ marginLeft: '1rem' }}><input type="checkbox" checked={showGIFs} onChange={() => setShowGIFs(!showGIFs)} /> GIFs</label>
+            <label style={{ marginLeft: '1rem' }}><input type="checkbox" checked={showVideos} onChange={() => setShowVideos(!showVideos)} /> Videos</label>
+          </div>
+
+          <button onClick={fetchMedia} style={{ marginTop: '2rem', padding: '0.5rem 1rem' }}>Save Settings & Start Viewer</button>
         </div>
       )}
 
       {viewMode === 'player' && (
         <div>
-          {isLoading ? (
-            <p>Loading...</p>
-          ) : currentMedia ? (
+          {currentMedia ? (
             currentMedia.type === 'video' ? (
-              <video
-                src={currentMedia.url}
-                autoPlay
-                muted={isMuted}
-                controls
-                onEnded={skipMedia}
-                style={{ maxWidth: '90%', maxHeight: '80vh', marginBottom: '1rem' }}
-              />
+              <video src={currentMedia.url} autoPlay muted={isMuted} controls onEnded={skipMedia} style={{ maxWidth: '90%', maxHeight: '70vh' }} />
             ) : (
-              <img
-                src={currentMedia.url}
-                alt="Reddit media"
-                style={{ maxWidth: '90%', maxHeight: '80vh', marginBottom: '1rem' }}
-              />
+              <img src={currentMedia.url} alt="media" style={{ maxWidth: '90%', maxHeight: '70vh' }} />
             )
-          ) : (
-            <p>No media to display</p>
-          )}
+          ) : <p>No media available</p>}
+
           <div style={{ marginTop: '1rem' }}>
             <button onClick={skipMedia}>⏭ Skip</button>
             <button onClick={() => setIsPaused(!isPaused)}>{isPaused ? '▶️ Resume' : '⏸ Pause'}</button>
             <button onClick={() => setIsMuted(!isMuted)}>{isMuted ? '🔈 Unmute' : '🔇 Mute'}</button>
+            <button onClick={() => setViewMode('setup')}>⚙️ Configure</button>
+            <button onClick={toggleFullscreen}>🖥️ Fullscreen</button>
           </div>
         </div>
       )}
