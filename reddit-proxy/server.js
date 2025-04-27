@@ -1,33 +1,26 @@
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch');
+import express from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch'; 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Enable CORS for all routes
 app.use(cors());
 
-// Simple proxy endpoint
+
 app.get('/proxy', async (req, res) => {
-  const targetUrl = req.query.url;
-  
-  if (!targetUrl) {
-    return res.status(400).send('Missing url parameter');
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).send('Missing URL parameter');
   }
-
   try {
-    const response = await fetch(targetUrl);
+    const response = await fetch(url);
     const contentType = response.headers.get('content-type');
-    res.setHeader('Content-Type', contentType);
+    res.set('Content-Type', contentType);
     response.body.pipe(res);
-  } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).send('Error fetching the requested resource');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Proxy error');
   }
 });
 
-// Start the server
-app.listen(PORT, () => {
-  console.log(`Proxy server running on port ${PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Proxy server running on port ${PORT}`));

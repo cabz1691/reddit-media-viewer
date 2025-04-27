@@ -41,6 +41,15 @@ const App = () => {
     }
   };
 
+  // --- Proxy URL wrapper ---
+const getProxiedUrl = (url) => {
+  if (!url) return ''; // safety check
+  if (url.includes('v.redd.it') || url.includes('redgifs.com')) {
+    return `http://localhost:3000/proxy?url=${encodeURIComponent(url)}`;
+  }
+  return url; // normal images/gifs don't need proxy
+};
+
   const validateSubreddit = async (index) => {
     const name = subreddits[index]?.name;
     if (!name) return;
@@ -222,9 +231,9 @@ const App = () => {
         <div>
           {currentMedia ? (
             currentMedia.type === 'video' ? (
-              <video src={currentMedia.url} autoPlay muted={isMuted} controls onEnded={skipMedia} style={{ maxWidth: '90%', maxHeight: '70vh' }} />
+              <video src={getProxiedUrl(currentMedia.url)} autoPlay muted={isMuted} controls onEnded={skipMedia} style={{ maxWidth: '90%', maxHeight: '70vh' }} />
             ) : (
-              <img src={currentMedia.url} alt="media" style={{ maxWidth: '90%', maxHeight: '70vh' }} />
+              <img src={getProxiedUrl(currentMedia.url)} alt="media" style={{ maxWidth: '90%', maxHeight: '70vh' }} />
             )
           ) : <p>No media available</p>}
 
