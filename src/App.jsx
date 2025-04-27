@@ -17,35 +17,46 @@ const App = () => {
   const [isPaused, setIsPaused] = useState(false);
   const timerRef = useRef(null);
 
-  const getRedgifsToken = async () => {
-    try {
-      const res = await fetch('https://api.redgifs.com/v2/auth/temporary');
-      const data = await res.json();
-      return data?.token;
-    } catch (err) {
-      console.error('Failed to fetch Redgifs token:', err);
-      return null;
-    }
-  };
+  // --- Example Redgifs token fetch ---
+const fetchRedgifsToken = async () => {
+  try {
+    const res = await fetch(getProxiedUrl('https://api.redgifs.com/v2/auth/temporary'));
+    const data = await res.json();
+    return data?.token;
+  } catch (err) {
+    console.error('Failed to fetch Redgifs token:', err);
+    return null;
+  }
+};
 
-  const fetchRedgifsVideo = async (id, token) => {
-    try {
-      const res = await fetch(`https://api.redgifs.com/v2/gifs/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
-      return data?.gif?.urls?.hd;
-    } catch (err) {
-      console.error('Failed to fetch Redgifs video:', err);
-      return null;
-    }
-  };
+  // --- Example Redgifs GIF/video fetch ---
+const fetchRedgifsGif = async (gifUrl) => {
+  try {
+    const res = await fetch(getProxiedUrl(gifUrl));
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('Failed to fetch Redgifs gif:', err);
+    return null;
+  }
+};
+
+// --- Example Reddit video fetch ---
+const fetchRedditVideo = async (videoUrl) => {
+  try {
+    const res = await fetch(getProxiedUrl(videoUrl));
+    return res; // handle appropriately after
+  } catch (err) {
+    console.error('Failed to fetch Reddit video:', err);
+    return null;
+  }
+};
 
   // --- Proxy URL wrapper ---
 const getProxiedUrl = (url) => {
   if (!url) return ''; // safety check
   if (url.includes('v.redd.it') || url.includes('redgifs.com')) {
-    rreturn `${window.location.origin}/api/proxy?url=${encodeURIComponent(url)}`;
+    return `/api/proxy?url=${encodeURIComponent(url)}`;
   }
   return url; // normal images/gifs don't need proxy
 };
@@ -54,7 +65,7 @@ const getProxiedUrl = (url) => {
     const name = subreddits[index]?.name;
     if (!name) return;
     try {
-      const res = await fetch(`https://www.reddit.com/r/${name}/about.json`);
+      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`));
       const data = await res.json();
       const updated = [...subreddits];
       updated[index].valid = data?.data?.display_name ? true : false;
@@ -75,7 +86,7 @@ const getProxiedUrl = (url) => {
     for (const sub of validSubs) {
       let after = null;
       for (let i = 0; i < 3; i++) {
-        const res = await fetch(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`);
+        const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`));
         const data = await res.json();
         const posts = data.data.children.map(child => child.data);
         after = data.data.after;
@@ -124,6 +135,32 @@ const getProxiedUrl = (url) => {
       }
     }
 
+
+    // --- When displaying a media item ---
+{
+  currentMedia?.type === 'video' ? (
+    <video
+      src={getProxiedUrl(currentMedia.url)}
+      autoPlay
+      muted={isMuted}
+      controls
+      onEnded={() => {
+        setCurrentIndex(prev => (prev + 1) % mediaItems.length);
+      }}
+      onError={() => {
+        console.warn("Video failed to load, skipping...");
+        setCurrentIndex(prev => (prev + 1) % mediaItems.length);
+      }}
+      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+    />
+  ) : (
+    <img
+      src={currentMedia?.url}
+      alt=""
+      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+    />
+  )
+}
     for (let i = media.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [media[i], media[j]] = [media[j], media[i]];
