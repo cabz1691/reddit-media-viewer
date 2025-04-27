@@ -18,21 +18,16 @@ const App = () => {
   const timerRef = useRef(null);
 
   // --- Example Redgifs token fetch ---
-  const fetchRedgifsToken = async () => {
+  async function getRedgifsToken() {
     try {
-      const res = await fetch('https://api.redgifs.com/v2/auth/temporary', {
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (compatible; RedditMediaViewer/1.0)',
-        },
-      });
+      const res = await fetch('https://api.redgifs.com/v2/auth/temporary');
       const data = await res.json();
       return data?.token;
     } catch (err) {
       console.error('Failed to fetch Redgifs token:', err);
       return null;
     }
-  };
+  }
 
 const fetchRedgifsVideo = async (id, token) => {
   try {
