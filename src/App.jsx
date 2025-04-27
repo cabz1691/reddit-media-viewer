@@ -81,10 +81,10 @@ const getProxiedUrl = (url) => {
 };
 
   const validateSubreddit = async (index) => {
-    const name = subreddits[index]?.name;
+    const name = subreddits[index]?.name; 
     if (!name) return;
     try {
-      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${name}/new.json?limit=100`));
+      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100`));
       const data = await res.json();
       const updated = [...subreddits];
       updated[index].valid = data?.data?.display_name ? true : false;
@@ -105,7 +105,7 @@ const getProxiedUrl = (url) => {
     for (const sub of validSubs) {
       let after = null;
       for (let i = 0; i < 3; i++) {
-        const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${name}/new.json?limit=100`));
+        const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100`));
         const data = await res.json();
         const posts = data.data.children.map(child => child.data);
         after = data.data.after;
