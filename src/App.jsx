@@ -29,6 +29,20 @@ const fetchRedgifsToken = async () => {
   }
 };
 
+const fetchRedgifsVideo = async (id, token) => {
+  try {
+    const res = await fetch(getProxiedUrl(`https://api.redgifs.com/v2/gifs/${id}`), {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json();
+    return data?.gif?.urls?.hd || data?.gif?.urls?.sd || null;
+  } catch (err) {
+    console.error('Failed to fetch Redgifs video:', err);
+    return null;
+  }
+};
   // --- Example Redgifs GIF/video fetch ---
 const fetchRedgifsGif = async (gifUrl) => {
   try {
@@ -65,7 +79,7 @@ const getProxiedUrl = (url) => {
     const name = subreddits[index]?.name;
     if (!name) return;
     try {
-      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`));
+      const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${name}/new.json?limit=100`));
       const data = await res.json();
       const updated = [...subreddits];
       updated[index].valid = data?.data?.display_name ? true : false;
@@ -79,14 +93,14 @@ const getProxiedUrl = (url) => {
 
   const fetchMedia = async () => {
     setMediaItems([]);
-    const token = await getRedgifsToken();
+    const token = await fetchRedgifsToken();
     const media = [];
     const validSubs = subreddits.filter(sub => sub.valid).map(sub => sub.name);
 
     for (const sub of validSubs) {
       let after = null;
       for (let i = 0; i < 3; i++) {
-        const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${sub}/new.json?limit=100${after ? `&after=${after}` : ''}`));
+        const res = await fetch(getProxiedUrl(`https://www.reddit.com/r/${name}/new.json?limit=100`));
         const data = await res.json();
         const posts = data.data.children.map(child => child.data);
         after = data.data.after;
@@ -108,7 +122,7 @@ const getProxiedUrl = (url) => {
           if (!mediaUrl && post.is_video && showVideos && post.media?.reddit_video?.fallback_url) {
             const fallback = post.media.reddit_video.fallback_url;
             if (fallback.endsWith(".mp4")) {
-              mediaUrl = `http://localhost:3000/proxy?url=${encodeURIComponent(fallback)}`;
+              mediaUrl = getProxiedUrl(fallback);
               type = 'video';
             }
           }
@@ -137,30 +151,6 @@ const getProxiedUrl = (url) => {
 
 
     // --- When displaying a media item ---
-{
-  currentMedia?.type === 'video' ? (
-    <video
-      src={getProxiedUrl(currentMedia.url)}
-      autoPlay
-      muted={isMuted}
-      controls
-      onEnded={() => {
-        setCurrentIndex(prev => (prev + 1) % mediaItems.length);
-      }}
-      onError={() => {
-        console.warn("Video failed to load, skipping...");
-        setCurrentIndex(prev => (prev + 1) % mediaItems.length);
-      }}
-      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-    />
-  ) : (
-    <img
-      src={currentMedia?.url}
-      alt=""
-      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-    />
-  )
-}
     for (let i = media.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [media[i], media[j]] = [media[j], media[i]];
