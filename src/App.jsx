@@ -45,7 +45,7 @@ const App = () => {
 const getProxiedUrl = (url) => {
   if (!url) return ''; // safety check
   if (url.includes('v.redd.it') || url.includes('redgifs.com')) {
-    return `http://localhost:3000/proxy?url=${encodeURIComponent(url)}`;
+    rreturn `${window.location.origin}/api/proxy?url=${encodeURIComponent(url)}`;
   }
   return url; // normal images/gifs don't need proxy
 };
